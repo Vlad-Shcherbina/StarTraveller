@@ -366,7 +366,9 @@ public class StarTravellerVis {
             // draw flown paths
             for (int i=0;i<progress.size();i+=3)
             {
-                g2.setColor(progress.get(i+2)==0 ? Color.GRAY : Color.GREEN);
+                g2.setColor(progress.get(i+2)==0 ?
+                    new Color(0.7f, 0.7f, 0.7f) :
+                    new Color(0.2f, 0.2f, 0.2f));
                 int v1 = progress.get(i);
                 int v2 = progress.get(i+1);
                 g2.drawLine(star[v1].x, star[v1].y, star[v2].x, star[v2].y);
