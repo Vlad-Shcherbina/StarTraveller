@@ -44,6 +44,35 @@ float dist(int star1, int star2) {
 
 int move_number;
 
+vector<vector<double>> ufo_range_logprob;
+
+void update_range_logprog(vector<double> &logprob, int src, int dst) {
+    vector<int> dists;
+    for (int i = 0; i < stars.size(); i++) {
+        int d = dist2(i, src);
+        if (d > 0)
+            dists.push_back(d);
+    }
+    sort(dists.begin(), dists.end());
+    auto left = lower_bound(dists.begin(), dists.end(), dist2(src, dst));
+    auto right = upper_bound(dists.begin(), dists.end(), dist2(src, dst));
+    if (left == right)
+        return;
+    for (int r = 0; r < logprob.size(); r++) {
+        if (r < 10) {
+            logprob[r] = -1000000;
+            continue;
+        }
+        double a = dists.end() - left;
+        double b = dists.end() - right;
+        logprob[r] += log(r) + (r - 1) * log(0.5 * (a + b));
+        logprob[r] -= r * log(stars.size() - 1);
+    }
+    double m = *max_element(logprob.begin(), logprob.end());
+    for (double &lp : logprob)
+        lp -= m;
+}
+
 
 class StarTraveller {
 public:
@@ -59,6 +88,26 @@ public:
 
     vector<int> makeMoves(vector<int> ufos, vector<int> ships)
     {
+        if (move_number == 0) {
+            vector<double> t(stars.size() / 10 + 10, 0.0);
+            for (int i = 0; i < 10; i++)
+                t[i] = -1000000;
+            ufo_range_logprob = vector<vector<double>>(ufos.size() / 3, t);
+
+            for (int i = 0; i < ufos.size(); i += 3)
+                update_range_logprog(
+                    ufo_range_logprob[i / 3], ufos[i], ufos[i + 1]);
+        }
+        for (int i = 0; i < ufos.size(); i += 3)
+            update_range_logprog(
+                ufo_range_logprob[i / 3], ufos[i + 1], ufos[i + 2]);
+
+        if (move_number == 100) {
+            for (auto range : ufo_range_logprob) {
+                int r = max_element(range.begin(), range.end()) - range.begin();
+                debug(r);
+            }
+        }
         vector<int> ret = ships;
 
         float best_score = 10000000;

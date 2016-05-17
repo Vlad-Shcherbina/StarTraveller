@@ -129,6 +129,11 @@ public class StarTravellerVis {
             ufoRange[i] = 10+rnd.nextInt(NStar/10);
             ufoParm[i*3] = rnd.nextInt(NStar);
         }
+
+        for (int i = 0; i < ufoRange.length; i++) {
+            System.out.println("ufoRange[" + i + "] = " + ufoRange[i]);
+        }
+
         calculateNextStar(1);
         calculateNextStar(2);
 
