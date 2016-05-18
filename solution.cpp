@@ -3,6 +3,7 @@
 #endif
 
 #include <algorithm>
+#include <numeric>
 #include <iostream>
 #include <vector>
 #include <cassert>
@@ -28,8 +29,6 @@ using namespace std;
 
 
 vector<pair<int, int>> stars;
-vector<bool> visited;
-
 
 int dist2(int star1, int star2) {
     int dx = stars[star1].first - stars[star2].first;
@@ -39,6 +38,35 @@ int dist2(int star1, int star2) {
 
 float dist(int star1, int star2) {
     return sqrt(dist2(star1, star2));
+}
+
+
+vector<bool> visited;
+vector<vector<int>> nearest_not_visited;
+
+void init_visited() {
+    visited = vector<bool>(stars.size());
+    assert(nearest_not_visited.empty());
+    vector<int> rs(stars.size());
+    iota(rs.begin(), rs.end(), 0);
+    nearest_not_visited = vector<vector<int>>(stars.size(), rs);
+    for (int i = 0; i < stars.size(); i++) {
+        auto &rs = nearest_not_visited[i];
+        sort(rs.begin(), rs.end(), [i](int a, int b) {
+            return dist2(i, a) < dist2(i, b);
+        });
+    }
+}
+
+void mark_visited(int star) {
+    assert(!visited[star]);
+    visited[star] = true;
+    for (int i = 0; i < stars.size(); i++) {
+        auto &rs = nearest_not_visited[i];
+        auto p = find(rs.begin(), rs.end(), star);
+        assert(p != rs.end());
+        rs.erase(p);
+    }
 }
 
 
@@ -81,7 +109,7 @@ public:
         for (int i = 0; i < stars.size(); i += 2) {
             ::stars.emplace_back(stars[i], stars[i + 1]);
         }
-        ::visited = vector<bool>(::stars.size());
+        init_visited();
         move_number = 0;
         return 0;
     }
@@ -115,15 +143,14 @@ public:
         int best_dst = ships[best_ship];
         bool urgent = false;
 
-        for (int i = 0; i < stars.size(); i++) {
-            if (visited[i])
-                continue;
-            for (int j = 0; j < ships.size(); j++) {
-                float d = dist(i, ships[j]);
+        for (int j = 0; j < ships.size(); j++) {
+            const auto &rs = nearest_not_visited[ships[j]];
+            if (!rs.empty()) {
+                int d = dist(rs.front(), ships[j]);
                 if (d < best_score) {
                     best_score = d;
                     best_ship = j;
-                    best_dst = i;
+                    best_dst = rs.front();
                 }
             }
         }
@@ -143,33 +170,27 @@ public:
                 }
             }
 
-            int nearest_d = 10000000;
-            int nearest_not_visited = ufos[i + 2];
-            for (int ii = 0; ii < stars.size(); ii++) {
-                if (visited[ii] || ii == ufos[i + 1] || ii == ufos[i])
-                    continue;
-                int d = dist2(ii, ufos[i + 2]);
-                if (d < nearest_d) {
-                    nearest_d = d;
-                    nearest_not_visited = ii;
+            int nnv = ufos[i + 2];
+            for (int ii : nearest_not_visited[ufos[i + 2]]) {
+                if (ii != ufos[i + 1]) {
+                    nnv = ii;
+                    break;
                 }
             }
 
-            if (false || !visited[ufos[i + 2]]) {
-                for (int j = 0; j < ships.size(); j++) {
-                    float k = ships[j] == ufos[i] ? 1e-3 : 1;
-                    float d =
-                        k * dist(ships[j], ufos[i + 1]) +
-                        1e-3 * dist(ufos[i + 1], ufos[i + 2]) +
-                        dist(ufos[i + 2], nearest_not_visited);
-                    if (!visited[ufos[i + 1]])
-                        d *= 0.5;
-                    if (d < best_score) {
-                        best_score = d;
-                        best_ship = j;
-                        best_dst = ufos[i + 1];
-                        urgent = true;
-                    }
+            for (int j = 0; j < ships.size(); j++) {
+                float k = ships[j] == ufos[i] ? 1e-3 : 1;
+                float d =
+                    k * dist(ships[j], ufos[i + 1]) +
+                    1e-3 * dist(ufos[i + 1], ufos[i + 2]) +
+                    dist(ufos[i + 2], nnv);
+                if (!visited[ufos[i + 1]])
+                    d *= 0.5;
+                if (d < best_score) {
+                    best_score = d;
+                    best_ship = j;
+                    best_dst = ufos[i + 1];
+                    urgent = true;
                 }
             }
         }
@@ -177,8 +198,10 @@ public:
         if (urgent || move_number % 3 == 1)
             ret[best_ship] = best_dst;
 
-        for (int r : ret)
-            visited[r] = true;
+        for (int r : ret) {
+            if (!visited[r])
+                mark_visited(r);
+        }
         move_number++;
         return ret;
     }
