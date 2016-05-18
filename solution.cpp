@@ -28,6 +28,9 @@ using namespace std;
     << ", " #z " = " << (z) << endl
 
 
+default_random_engine rnd_gen(42);
+
+
 vector<pair<int, int>> stars;
 
 int dist2(int star1, int star2) {
@@ -43,8 +46,10 @@ float dist(int star1, int star2) {
 
 vector<bool> visited;
 vector<vector<int>> nearest_not_visited;
+int num_visited;
 
 void init_visited() {
+    num_visited = 0;
     visited = vector<bool>(stars.size());
     assert(nearest_not_visited.empty());
     vector<int> rs(stars.size());
@@ -61,12 +66,20 @@ void init_visited() {
 void mark_visited(int star) {
     assert(!visited[star]);
     visited[star] = true;
-    for (int i = 0; i < stars.size(); i++) {
-        auto &rs = nearest_not_visited[i];
-        auto p = find(rs.begin(), rs.end(), star);
-        assert(p != rs.end());
-        rs.erase(p);
-    }
+    num_visited++;
+}
+
+const vector<int>& get_nearest_not_visited(int star) {
+    vector<int> &rs = nearest_not_visited[star];
+    if (rs.size() == stars.size() - num_visited)
+        return rs;
+    if (bernoulli_distribution(
+            0.5 * (rs.size() + num_visited - stars.size()) /
+            (stars.size() - num_visited + 1))(rnd_gen))
+        return rs;
+    auto p = remove_if(rs.begin(), rs.end(), [](int a){ return visited[a]; });
+    rs.erase(p, rs.end());
+    return rs;
 }
 
 
@@ -144,14 +157,16 @@ public:
         bool urgent = false;
 
         for (int j = 0; j < ships.size(); j++) {
-            const auto &rs = nearest_not_visited[ships[j]];
-            if (!rs.empty()) {
-                int d = dist(rs.front(), ships[j]);
+            for (int i : get_nearest_not_visited(ships[j])) {
+                if (visited[i])
+                    continue;
+                int d = dist(i, ships[j]);
                 if (d < best_score) {
                     best_score = d;
                     best_ship = j;
-                    best_dst = rs.front();
+                    best_dst = i;
                 }
+                break;
             }
         }
 
@@ -171,8 +186,8 @@ public:
             }
 
             int nnv = ufos[i + 2];
-            for (int ii : nearest_not_visited[ufos[i + 2]]) {
-                if (ii != ufos[i + 1]) {
+            for (int ii : get_nearest_not_visited(ufos[i + 2])) {
+                if (!visited[ii] && ii != ufos[i + 1]) {
                     nnv = ii;
                     break;
                 }
