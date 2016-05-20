@@ -115,6 +115,69 @@ void update_range_logprog(vector<double> &logprob, int src, int dst) {
 }
 
 
+vector<vector<int>> simulate_ufo_paths(
+        int ufo, const vector<int> &prefix,
+        int num_paths, int length) {
+    vector<double> range_probs;
+    for (auto lp : ufo_range_logprob[ufo])
+        range_probs.push_back(exp(lp));
+    discrete_distribution<int> rnd_range(range_probs.begin(), range_probs.end());
+    uniform_int_distribution<int> rnd_star(0, stars.size() - 1);
+
+    vector<vector<int>> result;
+    for (int i = 0; i < num_paths; i++) {
+        vector<int> path = prefix;
+        int range = rnd_range(rnd_gen);
+        while (path.size() < length) {
+            int best_dist = 10000000;
+            int best_star = rnd_star(rnd_gen);
+            for (int j = 0; j < range; j++) {
+                int star = rnd_star(rnd_gen);
+                int d = dist2(star, path.back());
+                if (d > 0 && d < best_dist) {
+                    best_dist = d;
+                    best_star = star;
+                }
+            }
+            path.push_back(best_star);
+        }
+        result.push_back(path);
+    }
+    return result;
+}
+
+
+struct Expectation {
+    float new_stars = 0;
+    float energy = 0;
+    float moves = 0;
+};
+
+Expectation ride_expectations(const vector<vector<int>> ufo_paths) {
+    Expectation result;
+    vector<bool> path_visited(stars.size(), false);
+    for (const auto &path : ufo_paths) {
+        int prev = path.front();
+        for (int p : path) {
+            if (!visited[p] &&
+                !path_visited[p]) {
+                result.new_stars += 1;
+                path_visited[p] = true;
+            }
+            result.energy += 1e-3 * dist(prev, p);
+            prev = p;
+        }
+        for (int p : path)
+            path_visited[p] = false;
+        result.moves += 1;
+    }
+    result.new_stars /= ufo_paths.size();
+    result.energy /= ufo_paths.size();
+    result.moves /= ufo_paths.size();
+    return result;
+}
+
+
 class StarTraveller {
 public:
     int init(vector<int> stars)
@@ -170,6 +233,13 @@ public:
             }
         }
 
+        vector<Expectation> rides;
+        for (int i = 0; i < ufos.size(); i += 3) {
+            vector<int> prefix {ufos[i + 1], ufos[i + 2]};
+            auto paths = simulate_ufo_paths(i / 3, prefix, 2, 20);
+            rides.push_back(ride_expectations(paths));
+        }
+
         for (int i = 0; i < ufos.size(); i += 3) {
             if (!visited[ufos[i + 1]]) {
                 for (int j = 0; j < ships.size(); j++) {
@@ -201,6 +271,22 @@ public:
                     dist(ufos[i + 2], nnv);
                 if (!visited[ufos[i + 1]])
                     d *= 0.5;
+                if (d < best_score) {
+                    best_score = d;
+                    best_ship = j;
+                    best_dst = ufos[i + 1];
+                    urgent = true;
+                }
+            }
+
+            for (int j = 0; j < ships.size(); j++) {
+                float d = dist2(ships[j], ufos[i + 1]);
+                if (ships[j] == ufos[i])
+                    d *= 1e-3;
+                if (rides[i / 3].moves > 4 * rides[i / 3].new_stars)
+                    continue;
+                d += rides[i / 3].energy;
+                d /= 1e-6 + rides[i / 3].new_stars;
                 if (d < best_score) {
                     best_score = d;
                     best_ship = j;
