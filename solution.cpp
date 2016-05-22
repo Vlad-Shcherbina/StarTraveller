@@ -239,6 +239,8 @@ void improve_path(vector<int> &path) {
 class StarTraveller {
 private:
     double start_time;
+    double regular_energy = 0.0;
+    double ufo_energy = 0.0;
 public:
     int init(vector<int> stars)
     {
@@ -371,7 +373,24 @@ public:
             visited[r] = true;
         move_number++;
 
+        for (int j = 0; j < ships.size(); j++) {
+            bool on_ufo = false;
+            double d = dist(ships[j], ret[j]);
+            for (int i = 0; i < ufos.size(); i += 3) {
+                if (ships[j] == ufos[i] && ret[j] == ufos[i + 1]) {
+                    on_ufo = true;
+                    d *= 1e-3;
+                }
+            }
+            if (on_ufo)
+                ufo_energy += d;
+            else
+                regular_energy += d;
+        }
+
         if (find(visited.begin(), visited.end(), false) == visited.end()) {
+            debug2(regular_energy, ufo_energy);
+
             double it_took = get_time() - start_time;
             debug(it_took);
         }
