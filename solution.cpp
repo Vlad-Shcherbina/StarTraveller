@@ -11,6 +11,7 @@
 #include <random>
 #include <utility>
 #include <set>
+#include <ctime>
 
 #include "pretty_printing.h"
 
@@ -26,6 +27,11 @@ using namespace std;
     cerr << #x " = " << (x) \
     << ", " #y " = " << (y) \
     << ", " #z " = " << (z) << endl
+
+
+double get_time() {
+    return 1.0 * clock() / CLOCKS_PER_SEC;
+}
 
 
 default_random_engine rnd_gen(42);
@@ -179,9 +185,12 @@ Expectation ride_expectations(const vector<vector<int>> ufo_paths) {
 
 
 class StarTraveller {
+private:
+    double start_time;
 public:
     int init(vector<int> stars)
     {
+        start_time = get_time();
         for (int i = 0; i < stars.size(); i += 2) {
             ::stars.emplace_back(stars[i], stars[i + 1]);
         }
@@ -236,7 +245,7 @@ public:
         vector<Expectation> rides;
         for (int i = 0; i < ufos.size(); i += 3) {
             vector<int> prefix {ufos[i + 1], ufos[i + 2]};
-            auto paths = simulate_ufo_paths(i / 3, prefix, 2, 20);
+            auto paths = simulate_ufo_paths(i / 3, prefix, 1, 2);
             rides.push_back(ride_expectations(paths));
         }
 
@@ -304,6 +313,11 @@ public:
                 mark_visited(r);
         }
         move_number++;
+
+        if (find(visited.begin(), visited.end(), false) == visited.end()) {
+            double it_took = get_time() - start_time;
+            debug(it_took);
+        }
         return ret;
     }
 };
