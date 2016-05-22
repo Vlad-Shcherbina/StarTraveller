@@ -198,6 +198,44 @@ Expectation ride_expectations(const vector<vector<int>> ufo_paths) {
 }
 
 
+vector<int> greedy_path(int start, int max_len) {
+    vector<int> result {start};
+    while (result.size() < max_len) {
+        bool found = false;
+        for (int i = get_first_nearest(result.back());
+                 i != -1;
+                 i = get_next_nearest(result.back())) {
+            if (find(result.begin(), result.end(), i) == result.end()) {
+                found = true;
+                result.push_back(i);
+                break;
+            }
+        }
+        if (!found)
+            break;
+    }
+    return result;
+}
+
+
+void improve_path(vector<int> &path) {
+    while (true) {
+        bool improved = false;
+        for (int i = 1; i < path.size(); i++) {
+            for (int j = i + 2; j < path.size(); j++) {
+                if (dist(path[i - 1], path[j - 1]) + dist(path[i], path[j]) <
+                    dist(path[i - 1], path[i]) + dist(path[j - 1], path[j])) {
+                    improved = true;
+                    reverse(path.begin() + i, path.begin() + j);
+                }
+            }
+        }
+        if (!improved)
+            break;
+    }
+}
+
+
 class StarTraveller {
 private:
     double start_time;
@@ -247,17 +285,16 @@ public:
         bool urgent = false;
 
         for (int j = 0; j < ships.size(); j++) {
-            for (int i = get_first_nearest(ships[j]);
-                 i != -1;
-                 i = get_next_nearest(ships[j])) {
-                assert(!visited[i]);
-                int d = dist(i, ships[j]);
+            auto path = greedy_path(ships[j], 10);
+            improve_path(path);
+            if (path.size() > 1) {
+                assert(path[0] == ships[j]);
+                double d = dist(path[0], path[1]);
                 if (d < best_score) {
                     best_score = d;
                     best_ship = j;
-                    best_dst = i;
+                    best_dst = path[1];
                 }
-                break;
             }
         }
 
