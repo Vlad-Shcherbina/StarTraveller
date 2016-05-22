@@ -131,8 +131,24 @@ vector<vector<int>> simulate_ufo_paths(
     for (int i = 0; i < num_paths; i++) {
         vector<int> path = prefix;
         int range = rnd_range(rnd_gen);
+
+        double s = 0.0;
+        vector<double> rank_probs;
+        for (int rank = 0; rank < stars.size(); rank++) {
+            rank_probs.push_back(
+                range * pow(
+                    (stars.size() - rank + 0.5) / stars.size(),
+                    range - 1)
+                / stars.size());
+            s += rank_probs.back();
+            if (s > 0.9999)
+                break;
+        }
+        discrete_distribution<int> rnd_rank(
+            rank_probs.begin(), rank_probs.end());
+
         while (path.size() < length) {
-            int best_dist = 10000000;
+            /*int best_dist = 10000000;
             int best_star = rnd_star(rnd_gen);
             for (int j = 0; j < range; j++) {
                 int star = rnd_star(rnd_gen);
@@ -142,7 +158,8 @@ vector<vector<int>> simulate_ufo_paths(
                     best_star = star;
                 }
             }
-            path.push_back(best_star);
+            path.push_back(best_star);*/
+            path.push_back(nearest[path.back()][rnd_rank(rnd_gen)]);
         }
         result.push_back(path);
     }
@@ -243,13 +260,13 @@ public:
                 break;
             }
         }
-        /*
+
         vector<Expectation> rides;
         for (int i = 0; i < ufos.size(); i += 3) {
             vector<int> prefix {ufos[i + 1], ufos[i + 2]};
-            auto paths = simulate_ufo_paths(i / 3, prefix, 1, 2);
+            auto paths = simulate_ufo_paths(i / 3, prefix, 5, 10);
             rides.push_back(ride_expectations(paths));
-        }*/
+        }
 
         for (int i = 0; i < ufos.size(); i += 3) {
             if (!visited[ufos[i + 1]]) {
@@ -293,7 +310,7 @@ public:
                 }
             }
 
-            /*for (int j = 0; j < ships.size(); j++) {
+            for (int j = 0; j < ships.size(); j++) {
                 float d = dist2(ships[j], ufos[i + 1]);
                 if (ships[j] == ufos[i])
                     d *= 1e-3;
@@ -307,7 +324,7 @@ public:
                     best_dst = ufos[i + 1];
                     urgent = true;
                 }
-            }*/
+            }
         }
 
         if (urgent || move_number % 3 == 1)
