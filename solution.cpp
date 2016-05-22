@@ -100,26 +100,17 @@ int move_number;
 vector<vector<double>> ufo_range_logprob;
 
 void update_range_logprog(vector<double> &logprob, int src, int dst) {
-    vector<int> dists;
-    for (int i = 0; i < stars.size(); i++) {
-        int d = dist2(i, src);
-        if (d > 0)
-            dists.push_back(d);
-    }
-    sort(dists.begin(), dists.end());
-    auto left = lower_bound(dists.begin(), dists.end(), dist2(src, dst));
-    auto right = upper_bound(dists.begin(), dists.end(), dist2(src, dst));
-    if (left == right)
-        return;
+    int rank = find(nearest[src].begin(), nearest[src].end(), dst) -
+        nearest[src].begin();
+    double log_num_stars = log(stars.size());
     for (int r = 0; r < logprob.size(); r++) {
         if (r < 10) {
             logprob[r] = -1000000;
             continue;
         }
-        double a = dists.end() - left;
-        double b = dists.end() - right;
-        logprob[r] += log(r) + (r - 1) * log(0.5 * (a + b));
-        logprob[r] -= r * log(stars.size() - 1);
+        logprob[r] +=
+            log(r) + (r - 1) * log(stars.size() - rank + 0.5)
+            - r * log_num_stars;
     }
     double m = *max_element(logprob.begin(), logprob.end());
     for (double &lp : logprob)
@@ -221,9 +212,9 @@ public:
                 update_range_logprog(
                     ufo_range_logprob[i / 3], ufos[i], ufos[i + 1]);
         }
-        /*for (int i = 0; i < ufos.size(); i += 3)
+        for (int i = 0; i < ufos.size(); i += 3)
             update_range_logprog(
-                ufo_range_logprob[i / 3], ufos[i + 1], ufos[i + 2]);*/
+                ufo_range_logprob[i / 3], ufos[i + 1], ufos[i + 2]);
 
         if (move_number == 100) {
             for (auto range : ufo_range_logprob) {
